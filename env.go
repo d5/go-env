@@ -8,7 +8,7 @@ import (
 )
 
 var (
-	envFileTokens   = regexp.MustCompile(`^\s*(?:export\s+)?\s*([^\s"]+)\s*=\s*(?:(?:"([^"]*)")|([^\s"]*))\s*$`)
+	envFileTokens   = regexp.MustCompile(`^\s*(?:export\s+)?\s*([^\s"=]+)\s*=\s*(?:(?:"([^"]*)")|([^\s"]*))\s*$`)
 	envEntryComment = regexp.MustCompile(`#.+$`)
 )
 
