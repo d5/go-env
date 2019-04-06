@@ -17,14 +17,51 @@ func main() {
 }
 ```
 
-File Syntax:
+## Environment File Syntax 
 
-```env
-# line comment
-KEY1=VALUE1
-KEY2=VALUE2         # inline comment
-KEY4="VALUE4 FOO"   # use double quotes to include space(s)
-KEY5="VALUE5\nFOO"  #   or line break(s)
-KEY6 = VALUE6       # spaces are ignored (key/value are trimmed unless wrapped double quotes)
-export KEY3=VALUE3  # "export" before key term is simply ignored
+Basic format per line is `key=value`.
+
 ```
+KEY1=VALUE1
+KEY2=VALUE2
+```
+
+You can include the comment using `#` character:
+
+```
+# line commenets
+FOO=bar          # trailing whitespaces are ignored: key "FOO" value "bar"
+```
+
+Preceding and trailing whitespaces are ignored and not included when setting the environment variables:
+
+```
+  FOO=bar        # key "FOO" value "bar"   
+```
+
+But, the whitespaces between key and value are illegal.
+
+```
+FOO = bar        # illegal
+```
+
+Use double/single quotes to set multi-words values.
+
+```
+FOO="bar bar"    # key "FOO" value "bar bar"
+FOO=bar bar      # if not quoted, only the first words will be taken
+                 # key "FOO" value "bar"
+FOO='bar # bar'  # key "FOO" value "bar # bar"   
+FOO= bar         # empty value: key "FOO" value ""              
+```
+
+For the compatibility with Bash, preceding 'export' is ignored.
+
+```
+export FOO=bar  # key "FOO" value "bar
+```
+
+Additional notes:
+
+- Variable names can contain alphabetical letters, numbers, underlines (`_`), and, dash (`-`).
+- Comment lines or invalid/illegal lines are ignored by `env.Load()` function. 
