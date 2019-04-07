@@ -5,49 +5,73 @@ import (
 	"os"
 	"regexp"
 	"strings"
+	"unicode"
 )
 
 var (
-	envFileTokens   = regexp.MustCompile(`^\s*(?:export\s+)?\s*([^\s"=]+)\s*=\s*(?:(?:"([^"]*)")|([^\s"]*))\s*$`)
-	envEntryComment = regexp.MustCompile(`#.+$`)
+	exportRE = regexp.MustCompile(`^\s*(export\s+)?`)
+	keyRE    = regexp.MustCompile(`^[\w-]+$`)
 )
 
 // ParseKeyValue extracts a key-value pair from a given input s.
 func ParseKeyValue(s string) (key string, value string, ok bool) {
-	// remove comments if any
-	s = envEntryComment.ReplaceAllString(s, "")
+	// remove preceding whitespaces and 'export'
+	s = exportRE.ReplaceAllString(s, "")
 
-	tokens := envFileTokens.FindAllStringSubmatch(s, -1)
-	if len(tokens) == 1 && len(tokens[0]) == 4 {
-		key = tokens[0][1]
-
-		if tokens[0][2] != "" {
-			// Value is wrapped in double quotes.
-			// In this case, we replace "\n" with real line break character.
-			value = strings.Replace(tokens[0][2], "\n", `\n`, -1)
-		} else {
-			value = tokens[0][3]
-		}
-
-		ok = true
+	// split into key = value
+	tokens := strings.SplitN(s, "=", 2)
+	if len(tokens) != 2 {
+		return "", "", false
 	}
 
-	return
+	// key
+	key = tokens[0]
+	if !keyRE.MatchString(key) {
+		return "", "", false
+	}
+
+	// value
+	value = tokens[1]
+	if len(value) == 0 {
+		return key, "", true // empty value
+	}
+	rvalue := []rune(value)
+	if rvalue[0] == '"' || rvalue[0] == '\'' { // quoted value
+		for i := 1; i < len(rvalue); i++ {
+			if rvalue[i] == rvalue[0] {
+				return key, string(rvalue[1:i]), true
+			}
+		}
+		return "", "", false
+	} else {
+		// unquoted value: take the first word
+		for i, c := range rvalue {
+			if unicode.IsSpace(c) {
+				return key, string(rvalue[:i]), true
+			}
+		}
+
+		return key, value, true
+	}
 }
 
 // Load reads the file and sets environment variables.
+//
+// Load will return an error if it fails to read the input file, but,
+// invalid/illegal syntax in the input file will be simply ignored, and,
+// will not cause this function to return an error.
 func Load(filePath string) error {
 	file, err := os.Open(filePath)
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		k, v, ok := ParseKeyValue(scanner.Text())
 		if ok {
-			os.Setenv(k, v)
+			_ = os.Setenv(k, v)
 		}
 	}
 
